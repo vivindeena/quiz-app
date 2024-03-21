@@ -2,7 +2,7 @@ const router = require("express").Router();
 const userController = require("../controllers/UserController");
 
 router
-	.route("")
+	.route("/")
 	.post(userController.createUser)
 	.patch(userController.updateUser)
 	.delete(userController.deleteUser);
