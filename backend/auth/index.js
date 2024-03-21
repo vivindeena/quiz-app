@@ -1,4 +1,4 @@
-require("dotenv").config();
+require("dotenv").config({ path: "../../.env" }); //remove from prod
 const express = require("express");
 const cors = require("cors");
 const app = express();
@@ -17,6 +17,6 @@ app.get("/", (req, res) => {
 	});
 });
 
-app.listen(process.env.PORT, () => {
-	console.log(`Listening on port ${process.env.PORT}`);
+app.listen(process.env.AUTH_PORT, () => {
+	console.log(`Listening on port ${process.env.AUTH_PORT}`);
 });
