@@ -1,6 +1,6 @@
-const amqp = require('amqplib');
-const nodemailer = require('nodemailer');
-
+const amqp = require("amqplib");
+const nodemailer = require("nodemailer");
+require("dotenv").config({ path: "../../.env" }); //remove from prod
 
 const sendEmail = async (email_id, subject, emailBody) => {
 	let transporter = nodemailer.createTransport({
@@ -8,7 +8,7 @@ const sendEmail = async (email_id, subject, emailBody) => {
 		auth: {
 			user: process.env.GMAIL_ID,
 			pass: process.env.GMAIL_PASSWORD,
-		},
+		}
 	});
 
 	let message = {
@@ -19,38 +19,47 @@ const sendEmail = async (email_id, subject, emailBody) => {
 	};
 	try {
 		await transporter.sendMail(message);
+		console.log("Email sent successfully");
 		return true;
 	} catch (error) {
-		console.log(error);
+		console.error("Error sending email:", error);
 		return false;
 	}
 };
 
+async function receiveMessages() {
+	try {
+		const connection = await amqp.connect("amqp://localhost");
+		const channel = await connection.createChannel();
 
-async function reciveMessages() {
-	const connection = await amqp.connect("amqp://localhost");
-	const channel = await connection.createChannel();
+		const queueName = "mails";
+		const options = { durable: true };
 
-	const queueName = "myQueue";
-	const options = { durable: true };
+		await channel.assertQueue(queueName, options);
 
-	await channel.assertQueue(queueName, options);
-
-    channel.consume(queueName, (msg) => {
-		if (msg !== null) {
-			console.log("Recieved:", msg.content.toString());
-            const message = JSON.parse(msg.content.toString());
-            const emailSent = sendEmail(message.email_id, message.subject, message.emailBody);
-			if(emailSent){
-				channel.ack(msg);
+		channel.consume(queueName, async (msg) => {
+			try {
+				if (msg !== null) {
+					console.log("Received:", msg);
+					const message = JSON.parse(msg.content.toString());
+					const emailSent = await sendEmail(
+						message.email_id,
+						message.subject,
+						message.emailBody
+					);
+					if (emailSent) {
+						channel.ack(msg);
+					}
+				} else {
+					console.log("Consumer cancelled by server");
+				}
+			} catch (error) {
+				console.error("Error processing message:", error);
 			}
-		} else {
-			console.log("Consumer cancelled by server");
-		}
-	});
-
-	await channel.close();
-	await connection.close();
+		});
+	} catch (error) {
+		console.error("Error establishing connection or channel:", error);
+	}
 }
 
-reciveMessages();
+receiveMessages();
